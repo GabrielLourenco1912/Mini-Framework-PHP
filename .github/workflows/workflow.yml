@@ -39,3 +39,16 @@ jobs:
           script: |
             cd /var/www/minha-app
             git pull --rebase origin main
+            script: |
+            cd /var/www/minha-app
+            git pull --rebase origin main
+          
+            docker exec -i ${{ secrets.CONTAINER_NAME }} \
+            bash -c "PGPASSWORD=${{ secrets.DB_PASSWORD }} \
+            psql -U ${{ secrets.DB_USER }} -d ${{ secrets.DB_NAME }} \
+            -c \"DROP SCHEMA ${{ secrets.DB_SCHEMA }} CASCADE; CREATE SCHEMA ${{ secrets.DB_SCHEMA }};\""
+          
+            docker exec -i ${{ secrets.CONTAINER_NAME }} \
+            bash -c "PGPASSWORD=${{ secrets.DB_PASSWORD }} \
+            psql -U ${{ secrets.DB_USER }} -d ${{ secrets.DB_NAME }}-" \
+            < config/database/schema.sql

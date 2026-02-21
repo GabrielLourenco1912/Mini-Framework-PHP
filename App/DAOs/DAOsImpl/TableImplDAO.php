@@ -1,6 +1,6 @@
 <?php
 
-namespace App\DAOs;
+namespace App\DAOs\DAOsImpl;
 
 use config\database\database;
 
@@ -11,13 +11,19 @@ class TableImplDAO {
         $this->db = $db;
     }
 
+    function SanitizeInput($input) {
+        return preg_replace('/[^a-zA-Z0-9_]/', '', $input);
+    }
+
     function createTable(array $columnsInput, $tableName) {
         $this->db->transaction(function(\PDO $pdo) use ($columnsInput, $tableName) {
             $sqlLines = [];
             $constraints = [];
+            $indexes = [];
+
             foreach ($columnsInput as $col) {
-                $name = preg_replace('/[^a-zA-Z0-9_]/', '', $col['name']);
-                $type = preg_replace('/[^a-zA-Z0-9_]/', '', $col['type']);
+                $name = $this->SanitizeInput($col['name']);
+                $type = $this->SanitizeInput($col['type']);
                 $length = filter_var($col['length'], FILTER_SANITIZE_NUMBER_INT);
 
                 $colDefinition = "$name $type";
@@ -44,12 +50,15 @@ class TableImplDAO {
                         $colDefinition .= " UNIQUE";
                         break;
                     case 'FOREIGN':
-                        $fkTable = preg_replace('/[^a-zA-Z0-9_]/', '', $col['fk_table']);
-                        $fkCol = preg_replace('/[^a-zA-Z0-9_]/', '', $col['fk_column']);
+                        $fkTable = $this->SanitizeInput($col['fk_table']);
+                        $fkCol = $this->SanitizeInput($col['fk_column']);
 
                         if ($fkTable && $fkCol) {
                             $constraints[] = "CONSTRAINT fk_{$tableName}_{$name} FOREIGN KEY ($name) REFERENCES $fkTable($fkCol)";
                         }
+                        break;
+                    case 'INDEX':
+                        $indexes[] = "CREATE INDEX idx_{$tableName}_{$name} ON $tableName($name);";
                         break;
                 }
 
@@ -60,10 +69,15 @@ class TableImplDAO {
 
             $body = implode(",\n    ", $allDefinitions);
 
-            $sql = "CREATE TABLE $tableName (\n    $body\n);";
+            $sqlIndex = implode("\n", $indexes);
 
-            echo "<pre>" . $sql . "</pre>";
+            $sqlTable = "CREATE TABLE $tableName (\n    $body\n);";
 
+            $sql = $sqlTable . "\n" . $sqlIndex;
+
+            # echo "<pre>" . $sql . "</pre>";
+
+            #$pdo->exec($sql);
         });
     }
 }
