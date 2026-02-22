@@ -50,5 +50,5 @@ jobs:
           
             docker exec -i ${{ secrets.CONTAINER_NAME }} \
             bash -c "PGPASSWORD=${{ secrets.DB_PASSWORD }} \
-            psql -U ${{ secrets.DB_USER }} -d ${{ secrets.DB_NAME }}-" \
+            psql -U ${{ secrets.DB_USER }} -d ${{ secrets.DB_NAME }}" \
             < config/database/schema.sql
