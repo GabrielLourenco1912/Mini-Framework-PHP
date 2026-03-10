@@ -7,6 +7,8 @@ use App\Core\Exceptions\HttpException;
 class Router {
     private array $routes = [];
     private array $currentMiddlewares = [];
+    private array $resolving = [];
+    private array $instances = [];
     private string $prefix = '';
     public function setPrefix(string $prefix) {
         $this->prefix = $prefix;
@@ -88,12 +90,12 @@ class Router {
 
         if (!class_exists($controllerClass)) return;
 
-        $controllerInstance = new $controllerClass;
+        $controllerInstance = $this->resolveClass($controllerClass);
 
         if (!method_exists($controllerInstance, $controllerMethod)) return;
 
         $request = new \App\Core\Request();
-        $response = new \App\Core\Response();
+        $response = new \App\Core\Response(new Flash());
 
         $reflector = new \ReflectionMethod($controllerInstance, $controllerMethod);
         $parameters = $reflector->getParameters();
@@ -124,41 +126,55 @@ class Router {
     }
     private function resolveClass(string $className)
     {
+        if (in_array($className, $this->resolving)) {
+            throw new \Exception("Dependência circular detectada: " . implode(' -> ', $this->resolving) . " -> $className");
+        }
         if ($className === \config\database\database::class) {
             return \config\database\database::getInstance();
         }
-
-        $reflector = new \ReflectionClass($className);
-
-        if (!$reflector->isInstantiable()) {
-            throw new \Exception("A classe [$className] não pode ser instanciada.");
+        if (isset($this->instances[$className])) {
+            return $this->instances[$className];
         }
+        $this->resolving[] = $className;
 
-        $constructor = $reflector->getConstructor();
+        try {
+            $reflector = new \ReflectionClass($className);
 
-        if (is_null($constructor)) {
-            return new $className();
-        }
+            if (!$reflector->isInstantiable()) {
+                throw new \Exception("A classe [$className] não pode ser instanciada.");
+            }
 
-        $params = $constructor->getParameters();
-        $dependencies = [];
+            $constructor = $reflector->getConstructor();
 
-        foreach ($params as $param) {
-            $type = $param->getType();
+            if (is_null($constructor)) {
+                $instance = new $className();
+                $this->instances[$className] = $instance;
+                return $instance;
+            }
 
-            if ($type && !$type->isBuiltin()) {
-                $dependencies[] = $this->resolveClass($type->getName());
-            } else {
-                if ($param->isDefaultValueAvailable()) {
-                    $dependencies[] = $param->getDefaultValue();
+            $params = $constructor->getParameters();
+            $dependencies = [];
+
+            foreach ($params as $param) {
+                $type = $param->getType();
+
+                if ($type && !$type->isBuiltin()) {
+                    $dependencies[] = $this->resolveClass($type->getName());
                 } else {
-                    throw new \Exception("Não foi possível resolver a dependência primitiva da classe $className");
+                    if ($param->isDefaultValueAvailable()) {
+                        $dependencies[] = $param->getDefaultValue();
+                    } else {
+                        throw new \Exception("Não foi possível resolver a dependência primitiva da classe $className");
+                    }
                 }
             }
+            $instance = $reflector->newInstanceArgs($dependencies);
+            $this->instances[$className] = $instance;
+            return $instance;
+        } finally{
+            array_pop($this->resolving);
         }
-
-        return $reflector->newInstanceArgs($dependencies);
-    }
+}
 
     private function executeMiddleware(array $routeData)
     {

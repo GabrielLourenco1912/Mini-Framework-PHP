@@ -11,10 +11,9 @@ class TableImplDAO {
         $this->db = $db;
     }
 
-    function SanitizeInput($input) {
+    function sanitizeInput($input) {
         return preg_replace('/[^a-zA-Z0-9_]/', '', $input);
     }
-
     function createTable(array $columnsInput, $tableName) {
         $this->db->transaction(function(\PDO $pdo) use ($columnsInput, $tableName) {
             $sqlLines = [];
@@ -22,9 +21,9 @@ class TableImplDAO {
             $indexes = [];
 
             foreach ($columnsInput as $col) {
-                $name = $this->SanitizeInput($col['name']);
-                $type = $this->SanitizeInput($col['type']);
-                $length = filter_var($col['length'], FILTER_SANITIZE_NUMBER_INT);
+                $name = $this->sanitizeInput($col['name']);
+                $type = $this->sanitizeInput($col['type']);
+                $length = filter_var($col['length'] ?? null, FILTER_SANITIZE_NUMBER_INT);
 
                 $colDefinition = "$name $type";
 
@@ -50,8 +49,8 @@ class TableImplDAO {
                         $colDefinition .= " UNIQUE";
                         break;
                     case 'FOREIGN':
-                        $fkTable = $this->SanitizeInput($col['fk_table']);
-                        $fkCol = $this->SanitizeInput($col['fk_column']);
+                        $fkTable = $this->sanitizeInput($col['fk_table']);
+                        $fkCol = $this->sanitizeInput($col['fk_column']);
 
                         if ($fkTable && $fkCol) {
                             $constraints[] = "CONSTRAINT fk_{$tableName}_{$name} FOREIGN KEY ($name) REFERENCES $fkTable($fkCol)";
@@ -75,9 +74,24 @@ class TableImplDAO {
 
             $sql = $sqlTable . "\n" . $sqlIndex;
 
-            # echo "<pre>" . $sql . "</pre>";
+            #echo "<pre>" . $sql . "</pre>";
 
-            #$pdo->exec($sql);
+            $pdo->exec($sql);
         });
+    }
+    public function getSchemaTables() {
+        $sql = "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public'";
+        $stmt = $this->db->getConnection()->query($sql);
+        return $stmt->fetchAll(\PDO::FETCH_COLUMN);
+    }
+    public function deleteTable(string $tableName): void
+    {
+        if (!preg_match('/^[a-zA-Z0-9_]+$/', $tableName)) {
+            throw new \Exception("Nome de tabela inválido.");
+        }
+
+        $sql = "DROP TABLE IF EXISTS \"$tableName\" CASCADE";
+
+        $this->db->getConnection()->exec($sql);
     }
 }

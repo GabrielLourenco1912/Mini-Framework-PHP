@@ -4,6 +4,8 @@ use App\Core\Router;
 use App\Core\Response;
 use App\Core\Exceptions\HttpException;
 
+session_start();
+
 require __DIR__ . '/../vendor/autoload.php';
 
 $dotenv = Dotenv\Dotenv::createImmutable(__DIR__ . '/..');
@@ -22,13 +24,13 @@ require __DIR__ . '/../config/routes/web.php';
 try {
     $router->dispatch();
 } catch (HttpException $e) {
-    $response = new Response();
+    $response = new Response(new \App\Core\Flash());
     $code = $e->getStatusCode();
     $response->setStatusCode($code)
         ->view('errors/error', ['code' => $code, 'message' => $e->getMessage()])
         ->send();
 } catch (\Throwable $e) {
-    $response = new Response();
+    $response = new Response(new \App\Core\Flash());
     $code = (int) $e->getCode() ?: 500;
     $response->setStatusCode($code)
         ->view('errors/error', ['code' => $code, 'message' => $e->getMessage()])

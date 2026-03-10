@@ -2,10 +2,17 @@
 
 namespace App\Core;
 
+use App\Core\Exceptions\HttpException;
+
 class Response {
     private int $statusCode = 200;
     private array $headers = [];
     private mixed $content = null;
+    private Flash $flash;
+
+    public function __construct(Flash $flash) {
+        $this->flash = $flash;
+    }
 
     public function setStatusCode(int $code): self {
         $this->statusCode = $code;
@@ -32,9 +39,7 @@ class Response {
         $viewPath = __DIR__ . '/../../views/' . $viewName . '.php';
 
         if (!file_exists($viewPath)) {
-            $this->setStatusCode(500);
-            $this->setContent("Erro: View '$viewName' não encontrada.");
-            return $this;
+            throw new HttpException("Erro: View '$viewName' não encontrada.");
         }
 
         extract($data);
@@ -51,7 +56,12 @@ class Response {
         return $this;
     }
 
-    public function redirect(string $url): void {
+    public function redirect(string $url, array $args = []): void {
+        if (!empty($args)) {
+            foreach ($args as $key => $value) {
+                $this->flash->set($key, $value);
+            }
+        }
         header("Location: $url");
         exit;
     }

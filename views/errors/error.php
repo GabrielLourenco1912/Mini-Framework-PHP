@@ -34,7 +34,7 @@
         </div>
         <h1 class="error-title">
             <?php
-            if ($code == 404) echo "Página não encontrada";
+            if ($code == 404) echo "Rota não encontrada";
             elseif ($code == 403) echo "Acesso Negado";
             elseif ($code == 500) echo "Erro Interno";
             else echo "Ocorreu um erro";
