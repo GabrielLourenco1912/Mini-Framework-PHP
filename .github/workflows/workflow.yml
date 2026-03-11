@@ -39,9 +39,6 @@ jobs:
           script: |
             cd /var/www/minha-app
             git pull --rebase origin main
-            script: |
-            cd /var/www/minha-app
-            git pull --rebase origin main
           
             docker exec -i ${{ secrets.CONTAINER_NAME }} \
             bash -c "PGPASSWORD=${{ secrets.DB_PASSWORD }} \
