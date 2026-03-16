@@ -20,9 +20,14 @@ class AuthController
         $authService->saveAdminUser();
 
         if ($authService->login($data['email'], $data['password'])) {
-            $response->redirect('/bd/schemaBuilder');
+            $response->redirect('/');
         } else {
             $response->redirect('/auth/login', ['message' => 'Credenciais inválidas']);
         }
+    }
+    public function logout(Request $request, Response $response, AuthService $authService): void
+    {
+        $authService->logout();
+        $response->redirect('/');
     }
 }

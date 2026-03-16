@@ -27,4 +27,6 @@ $router->group(['middleware' => 'admin'], function($r) {
     $r->get('/bd/schemaCreate/success', [BDController::class, 'schemaCreateSuccess']);
 
     $r->delete('/bd/schemaDelete', [BDController::class, 'schemaDelete']);
+
+    $r->delete('/auth/logout', [AuthController::class, 'logout']);
 });
