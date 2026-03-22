@@ -16,8 +16,8 @@ class AuthController
     }
     public function login(Request $request, Response $response, AuthService $authService): void
     {
-        $data = $request->getBody();
         $authService->saveAdminUser();
+        $data = $request->getBody();
 
         $result = $authService->login($data['email'] ?? null, $data['password'] ?? null);
 
@@ -36,6 +36,7 @@ class AuthController
 
     public function loginApi(Request $request, Response $response, AuthService $authService): void
     {
+        $authService->saveAdminUser();
         $data = $request->getBody();
 
         $token = $authService->loginApi($data['email'] ?? null, $data['password'] ?? null);
